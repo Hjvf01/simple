@@ -42,11 +42,10 @@ ParseResult OperandParser::parse(CLIter begin, CLIter end) const {
     for (BaseParser* alt: alternatives) {
         auto tempResult = alt->parse(begin, end);
         if (!tempResult.isEmpty()) {
-            result = tempResult;
-            break;
+            return tempResult;
         }
     }
-    return result;
+    return ParseResult(begin);
 }
 
 

@@ -1,5 +1,6 @@
 #include <llvm/IR/ValueSymbolTable.h>
 #include <llvm/IR/Type.h>
+#include <llvm/IR/Instructions.h>
 
 #include <llvm/ADT/SmallVector.h>
 
@@ -22,6 +23,7 @@ std::ostream& operator << (std::ostream& os, const BaseAST& ast) {
     return os << ast.str();
 }
 
+
 void AST_Test::testIntegerAST() {
     IntegerAST ast(45);
     ASSERT(ast == IntegerAST(
@@ -29,24 +31,33 @@ void AST_Test::testIntegerAST() {
     ));
 }
 
-llvm::Function* AST_Test::makeVoidLLVMFunction(const std::string &name) {
+llvm::Function* AST_Test::makeLLVMFunction(
+    llvm::Type* ret, const string &name, Args&& args
+) {
     return llvm::Function::Create(
-        llvm::FunctionType::get(llvm::Type::getVoidTy(testContext), false),
+        llvm::FunctionType::get(ret, args, false),
         llvm::GlobalValue::ExternalLinkage, name, &testModule
     );
 }
 
 void AST_Test::testNameAST() {
-    llvm::IntegerType* intType = llvm::IntegerType::get(context, 32);
     llvm::BasicBlock* testBlock = llvm::BasicBlock::Create(
-        context, "test", makeVoidLLVMFunction("testNameAST")
+        testContext, "test", makeLLVMFunction(IntegerType, "testNameAST",
+            vector<llvm::Type*>{IntegerType, IntegerType}
+        )
     );
-    auto* allocate = new llvm::AllocaInst(intType, 4, "name", testBlock);
+    auto* allocate = new llvm::AllocaInst(IntegerType, 4, "name", testBlock);
     auto* store = new llvm::StoreInst(
-        llvm::ConstantInt::get(intType, 2345), allocate, testBlock
+        llvm::ConstantInt::get(IntegerType, 2345), allocate, testBlock
     );
-    NameAST("name", testBlock).codegen();
-    testModule.print(llvm::outs(), nullptr);
+    llvm::Value* load = NameAST("name", testBlock).codegen();
+    if (load == nullptr) {
+        ASSERT(false);
+    } else {
+        llvm::ReturnInst::Create(testContext, load, testBlock);
+        testModule.print(llvm::outs(), nullptr);
+        ASSERT(true);
+    }
 
     delete store;
     delete allocate;
