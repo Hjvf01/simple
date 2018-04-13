@@ -69,34 +69,28 @@ Lexem Token::match(const std::string &str, const unsigned int position) const {
 
 Lexer::Lexer() : line_count(0), row_count(0) {}
 
-vector<Lexem> Lexer::tokenize(const string& str) {
-    unsigned int length = str.size();
+vector<Lexem> Lexer::tokenize(const string& str) const throw(SyntaxError) {
+    const unsigned int length = str.size();
     unsigned int position = 0;
     vector<Lexem> lexems = {};
 
     if (length == 0) return lexems;
 
-    bool any_match;
     while (position < length) {
-        any_match = true;
-        for (const Token& token: tokens) {
-            Lexem match_result = token.match(str, position);
-            if (!match_result.isEmpty()) {
-                any_match = false;
-                position += match_result.getLength();
-                lexems.push_back(match_result);
-                break;
-            }
-        }
-        if (any_match)
-            throw SyntaxError();
+        const Lexem lex = findLexem(str, position);
+        position += lex.getLength();
+        if (lex.getTag() != Tag::SEPARATOR)
+            lexems.push_back(lex);
     }
-
-    /* erase all separators */
-    lexems.erase(remove_if(lexems.begin(), lexems.end(),
-        [](const Lexem& lex) -> bool {
-            return lex.getTag() == Tag::SEPARATOR;
-        }
-    ), lexems.end());
     return lexems;
+}
+
+Lexem Lexer::findLexem(const string& str, const unsigned int position) const {
+    for (const Token& token: tokens) {
+        Lexem match_result = token.match(str, position);
+        if (!match_result.isEmpty()) {
+            return match_result;
+        }
+    }
+    throw SyntaxError();
 }

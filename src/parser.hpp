@@ -1,10 +1,5 @@
 #pragma once
 
-#include <map>
-using std::map;
-
-#include <llvm/IR/BasicBlock.h>
-
 #include "ast.hpp"
 #include "lexer.hpp"
 
@@ -23,9 +18,9 @@ struct ParseResult {
 
 class BaseParser {
 public:
-    BaseParser() {}
+    BaseParser() = default;
     virtual ParseResult parse(CLIter, CLIter) const = 0;
-    virtual ~BaseParser() {}
+    virtual ~BaseParser() = default;
 };
 
 
@@ -73,21 +68,44 @@ class BinaryParser final : public BaseParser {
      *          OPERAND
     */
     llvm::BasicBlock* block = nullptr;
+    bool hasParen;
 
 public:
-    BinaryParser(llvm::BasicBlock* b) : BaseParser(), block(b) {}
+    BinaryParser(llvm::BasicBlock* b, const bool paren=false) :
+        BaseParser(), block(b), hasParen(paren) {}
     virtual ~BinaryParser() override {}
 
     virtual ParseResult parse(CLIter, CLIter) const override final;
 
 private:
-    bool terminate(const Tag tag) const;
     ParseResult takeOperand(CLIter, CLIter) const;
     string takeOperator(const CLIter, const CLIter) const;
+    BinaryInstrAST* buildTree(const string&, BaseAST*, BaseAST*) const;
+    bool finish(const CLIter, const CLIter) const;
+};
+
+
+class ArgumentParser final : public BaseParser {
+    /* ARG = NAME | INTEGER | CALL | BINARY */
+
+    vector<BaseParser*> parsers;
+    llvm::BasicBlock* block = nullptr;
+
+public:
+    ArgumentParser(llvm::BasicBlock* b);
+    virtual ~ArgumentParser() override final;
+
+    virtual ParseResult parse(CLIter, CLIter) const override final;
 };
 
 
 class CallInstrParser final : public BaseParser {
+    /*
+     * CALL = NAME + '(' + VOID | ARGS + ')' + EOL?
+     * ARGS = ARG | ARG + ',' + ARGS
+     * ARG = NAME | INTEGER | CALL | BINARY
+     * VOID =
+    */
     llvm::BasicBlock* block;
 
 public:
@@ -96,16 +114,45 @@ public:
     virtual ~CallInstrParser() {}
 
     virtual ParseResult parse(CLIter, CLIter) const override final;
+
+private:
+    bool finish(CLIter, CLIter) const;
+    string takeName(CLIter, CLIter) const;
+    ParseResult takeArgument(CLIter, CLIter) const;
+    CLIter skipComma(CLIter) const;
+};
+
+
+class AssignValueParser final : public BaseParser {
+    /* VALUE = INTEGER | CALL | BINARY */
+
+    vector<BaseParser*> parsers;
+    llvm::BasicBlock* block = nullptr;
+
+public:
+    AssignValueParser(llvm::BasicBlock* basicBlock);
+    virtual ~AssignValueParser() override final;
+
+    virtual ParseResult parse(CLIter, CLIter) const override final;
 };
 
 
 class AssignInstrParser final : public BaseParser {
-    /* ASSIGN_INSTR = NAME + '=' BINARY_INSTR */
+    /*
+     * ASSIGN = TYPE_NAME + NAME + '=' VALUE
+     * VALUE = INTEGER | CALL | BINARY
+     */
+
     llvm::BasicBlock* block;
 
 public:
     AssignInstrParser(llvm::BasicBlock* b);
-    virtual ~AssignInstrParser() {}
+    virtual ~AssignInstrParser();
 
     virtual ParseResult parse(CLIter, CLIter) const override final;
+
+private:
+    string takeName(const CLIter, const CLIter) const;
+    CLIter skipAssignOperator(const CLIter) const;
+    ParseResult takeValue(const CLIter, const CLIter) const;
 };

@@ -38,13 +38,34 @@ static const map <OpCode, unsigned short int> OP_WEIGHT = {
 OpCode toOpCode(const string& op);
 string toString(const OpCode code);
 
+
+class Type {
+public:
+    Type() = default;
+    virtual ~Type() = default;
+
+    virtual string str() const = 0;
+};
+
+
+class IntegerType final : public Type {
+    llvm::IntegerType* type;
+
+public:
+    IntegerType() : Type(), type(llvm::IntegerType::get(context, 32)) {}
+    virtual ~IntegerType() override final {}
+
+    string str() const override final;
+};
+
+
 class BaseAST {
 public:
     BaseAST() = default;
 
     virtual llvm::Value* codegen() = 0;
     virtual string str() const = 0;
-    virtual ~BaseAST() {}
+    virtual ~BaseAST() = default;
 };
 
 
@@ -63,9 +84,13 @@ public:
 class NameAST final : public BaseAST {
     string name;
     Block* block;
+    Type* type;
 
 public:
-    NameAST(const string& n, Block* b);
+    NameAST(const string& n, Type* t) : BaseAST(),
+        name(n), type(t),
+        block(llvm::BasicBlock::Create(context, "default")) {}
+    NameAST(const string& n, Block* b, Type* t);
     ~NameAST() override {}
 
     llvm::Value* codegen() override;
@@ -81,8 +106,14 @@ class BinaryInstrAST final : public BaseAST {
     bool hasParen = false;
 
 public:
-    BinaryInstrAST(const string& op, BaseAST* l, BaseAST* r, Block* b) :
-        BaseAST(), opCode(toOpCode(op)), lhs(l), rhs(r), block(b) {}
+    BinaryInstrAST(const string& op, BaseAST* l, BaseAST* r) :
+        BaseAST(), opCode(toOpCode(op)), lhs(l), rhs(r)
+        , block(llvm::BasicBlock::Create(context, "Default")),
+        hasParen(false) {}
+    BinaryInstrAST(
+        const string& op, BaseAST* l, BaseAST* r, Block* b, bool paren=false) :
+     BaseAST(), opCode(toOpCode(op)), lhs(l), rhs(r), block(b), hasParen(paren)
+     {}
 
     ~BinaryInstrAST() override {
         delete lhs;
@@ -93,7 +124,6 @@ public:
     BaseAST* getLeft() const { return lhs; }
     BaseAST* getRight() const { return rhs; }
 
-    void setParen() { hasParen = true; }
     unsigned int weight() const {
         return OP_WEIGHT.at(opCode) + (hasParen ? 10 : 0);
     }
@@ -107,10 +137,13 @@ class CallInstrAST final : public BaseAST {
     using Args = vector<BaseAST*>;
 
     string name;
-    vector<BaseAST*> arguments;
+    Args arguments;
     Block* block = nullptr;
 
 public:
+    CallInstrAST(const string& fName, const Args& args) : BaseAST()
+        , name(fName), arguments(args)
+        , block(Block::Create(context, "Default")) {}
     CallInstrAST(const string& fName, const Args& args, Block* b) :
         BaseAST(), name(fName), arguments(args), block(b) {}
 
@@ -130,10 +163,28 @@ class AssignInstrAST final : public BaseAST {
     Block* block = nullptr;
 
 public:
+    AssignInstrAST(const string& n, BaseAST* v) :
+        BaseAST(), name(n), value(v),
+        block(llvm::BasicBlock::Create(context, "Default")) {}
     AssignInstrAST(const string& n, BaseAST* v, Block* b) :
         BaseAST(), name(n), value(v), block(b) {}
 
     ~AssignInstrAST() override { delete value; }
+
+    llvm::Value* codegen() override;
+    string str() const override;
+};
+
+
+/* define function(Type: a, Type: b) -> Type:\n */
+class PrototypeAST final : public BaseAST {
+    string name;
+    vector<string> arguments;
+    llvm::Module* module;
+
+public:
+    PrototypeAST(const string&, const vector<string>&, llvm::Module*);
+    virtual ~PrototypeAST() override final;
 
     llvm::Value* codegen() override;
     string str() const override;

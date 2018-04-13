@@ -41,38 +41,41 @@ llvm::Function* AST_Test::makeLLVMFunction(
 }
 
 void AST_Test::testNameAST() {
-    llvm::BasicBlock* testBlock = llvm::BasicBlock::Create(
-        testContext, "test", makeLLVMFunction(IntegerType, "testNameAST",
+    llvm::Function* testFunction = makeLLVMFunction(IntegerType, "testNameAST",
             vector<llvm::Type*>{IntegerType, IntegerType}
-        )
+    );
+    auto* testBlock = llvm::BasicBlock::Create(
+        testContext, "test", testFunction
     );
     auto* allocate = new llvm::AllocaInst(IntegerType, 4, "name", testBlock);
     auto* store = new llvm::StoreInst(
         llvm::ConstantInt::get(IntegerType, 2345), allocate, testBlock
     );
     llvm::Value* load = NameAST("name", testBlock).codegen();
-    if (load == nullptr) {
-        ASSERT(false);
-    } else {
-        llvm::ReturnInst::Create(testContext, load, testBlock);
-        testModule.print(llvm::outs(), nullptr);
-        ASSERT(true);
-    }
-
-    delete store;
-    delete allocate;
+    if (load == nullptr)
+        return;
+    llvm::ReturnInst::Create(testContext, load, testBlock);
+    testFunction->print(llvm::outs());
+    cout << endl;
 }
 
 void AST_Test::testBinaryInstrAST() {
-    ASSERT(false);
+    llvm::Function* testFunction = makeLLVMFunction(IntegerType,
+        "testBinaryInstrAST", Args{IntegerType, IntegerType, IntegerType});
+    auto* testBlock = llvm::BasicBlock::Create(
+        testContext, "entry", testFunction);
+    llvm::ReturnInst::Create(
+        testContext, llvm::ConstantInt::get(IntegerType, 34), testBlock);
+    testFunction->print(llvm::outs());
+    cout << endl;
 }
 
 void AST_Test::testCallInstrAST() {
-    ASSERT(false);
+    //ASSERT(false);
 }
 
 void AST_Test::testAssignInstrAST() {
-    ASSERT(false);
+    //ASSERT(false);
 }
 
 

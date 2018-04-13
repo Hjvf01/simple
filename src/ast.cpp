@@ -33,6 +33,13 @@ string toString(const OpCode code) {
 }
 
 
+
+
+string IntegerType::str() const { return "[IntegerType]"; }
+
+
+
+
 IntegerAST::IntegerAST(const int i) : BaseAST(), value(i) {}
 
 llvm::Value* IntegerAST::codegen() {
@@ -47,8 +54,8 @@ string IntegerAST::str() const {
 
 
 
-NameAST::NameAST(const std::string &n, llvm::BasicBlock* b) :
-    BaseAST(), name(n), block(b) {}
+NameAST::NameAST(const std::string &n, llvm::BasicBlock* b, Type* t) :
+    BaseAST(), name(n), block(b), type(t) {}
 
 llvm::Value* NameAST::codegen() {
     llvm::Value* value = block->getValueSymbolTable()->lookup(name);
@@ -58,7 +65,7 @@ llvm::Value* NameAST::codegen() {
 }
 
 string NameAST::str() const {
-    return "[Name: " + name + "]";
+    return "[Name: " + name + " of " + type->str() + "]";
 }
 
 
@@ -88,13 +95,13 @@ llvm::Value* CallInstrAST::codegen() {
 }
 
 string CallInstrAST::str() const {
-    string res = "[CallInstrAST call " + name + " (";
+    string res = "[CallInstrAST: '" + name + "' (";
 
     const size_t length = arguments.size();
     if (length == 0) return res += ")]";
 
     for (size_t i = 0; i < length - 1; ++i)
-        res += arguments[i]->str();
+        res += arguments[i]->str() + ", ";
     return res += arguments[length - 1]->str() + ")]";
 }
 
@@ -109,4 +116,16 @@ llvm::Value* AssignInstrAST::codegen() {
 
 string AssignInstrAST::str() const {
     return "[AssignInstrAST: " + name + " = " + value->str() + "]";
+}
+
+
+
+PrototypeAST::PrototypeAST(
+    const string &n, const vector<string> &args, llvm::Module* m
+) : BaseAST(), name(n), arguments(args), module(m) {}
+PrototypeAST::~PrototypeAST() {}
+
+
+llvm::Value* PrototypeAST::codegen() {
+
 }

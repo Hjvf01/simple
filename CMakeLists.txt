@@ -29,7 +29,6 @@ if (WITH_TEST)
     include_directories(/usr/include/cppunit)
     link_directories(/usr/lib/x86_64-linux-gnu)
     include_directories(tests/)
-
     add_subdirectory(tests/test_parser)
     target_link_libraries(simple parser_test)
 

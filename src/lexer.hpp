@@ -71,42 +71,8 @@ public:
 };
 
 
-/*
-        ***TERMINALS***
-    VOID =
-    INTEGER = [0-9]+
-    NAME = ([A-Z]|[a-z])+[0-9]
-    OPERATOR = +|-|/|*
-    ASSIGN = `=`
-    COMMA = `,`
-    SEPARATOR = ` `
-    EOL = `\n`
-    BLOCK_TR = [ ]{4}
-        ***INSTRUCTIONS***
-    OPERAND = INTERGER | NAME | CALL_INSTR
-    RHS = OPERATOR + BINARY_INSTR
-    LHS = OPERAND
 
-    COMMA_SEPARATED_RHS = COMMA + SEPARATOR? + COMMA_SEPARATED_LIST
-    COMMA_SEPARATED_LHS = OPERAND
-    COMMA_SEPARATED_LIST = COMMA_SEPARATED_LHS + COMMA_SEPARATED_RHS?
 
-    BINARY_INSTR = LHS + RHS?
-    CALL_INSTR = NAME + `(` + VOID | COMMA_SEPARATED_LIST + `)`
-    ASSIGN_INSTR = NAME + `=` + (BINARY_INSTR | CALL_INSTR)
-    RETURN_INSTR = `return` (VOID | BINARY_INSTR) + EOL
-    INSTRUCTION = BLOCK_TR+ + (ASSIGN_INSTR | CALL_INSTR) + EOL
-        ***FUNCTION***
-    DECLARATION = `declare` F_NAME `(` PARAMETERS `)` + EOL
-    F_NAME = NAME
-    PARAMETERS = VOID | COMMA_SEPARATED_LIST
-    PROTOTYPE = `define` + F_NAME + `(` + PARAMETERS + `)` + `:` + EOL
-    BODY = INSTRUCTION* + RETURN_INSTR
-    FUNCTION = PROTOTYPE + BODY
-        ***MODULE***
-    MAIN = FUNCTION(F_NAME="main", PARAMETERS=VOID)
-    MODULE = (VOID | FUNCTION+) + MAIN
-*/
 class Lexer {
     const vector<Token> tokens = {
         Token("[ ]{4}", Tag::BLOCK),
@@ -129,5 +95,8 @@ class Lexer {
 public:
     Lexer();
 
-    vector<Lexem> tokenize(const string& str);
+    vector<Lexem> tokenize(const string& str) const throw(SyntaxError);
+
+private:
+    Lexem findLexem(const string&, const unsigned int position) const;
 };

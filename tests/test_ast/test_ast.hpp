@@ -46,10 +46,24 @@ private:
     );
 };
 
+template<typename Test> void run() {
+    std::cout << __PRETTY_FUNCTION__ << endl;
+    TestResult controller;
+    TestResultCollector collector;
+    controller.addListener(&collector);
+    Listner listner;
+    controller.addListener(&listner);
+    TestRunner runner;
+    runner.addTest(Test::suite());
+    runner.run(controller);
+}
+
 void run() {
-    cout << __PRETTY_FUNCTION__ << endl;
+    run<AST_Test>();
+/*
     TestRunner runner;
     runner.addTest(AST_Test::suite());
     runner.run();
+*/
 }
 }

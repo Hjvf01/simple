@@ -14,8 +14,7 @@ using namespace ParserTest;
 using Lexems = vector<Lexem>;
 
 ostream& operator << (ostream& os, BaseAST* ast) {
-    if (ast == nullptr)
-        return os << 0;
+    if (ast == nullptr) return os << 0;
     return os << ast->str();
 }
 
@@ -58,17 +57,10 @@ void IntegerParser_Test::testParse() {
 
 
 TestSuite* IntegerParser_Test::suite() {
-    using Pair = Pair<IntegerParser_Test>;
-
     auto* testSuite = new TestSuite;
-    vector<Pair> cases = {
-        Pair("testParser", &IntegerParser_Test::testParse),
-    };
-    for(const Pair& _case: cases) {
-        testSuite->addTest(new TestCaller<IntegerParser_Test>(
-            _case.first, _case.second
-        ));
-    }
+    testSuite->addTest(new TestCaller<IntegerParser_Test>(
+        "testInteger", &IntegerParser_Test::testParse
+    ));
     return testSuite;
 }
 
@@ -96,63 +88,105 @@ TestSuite* OperandParser_Test::suite() {
     return _suite;
 }
 
-
-
 BinaryParser_Test::BinaryParser_Test() : TestCase()
     , block(llvm::BasicBlock::Create(context, "test_block"))
     , parser(BinaryParser(block)) {}
 
-void BinaryParser_Test::testParseSingleOperand() {
-    string str = "45";
-    Lexems lexems = Lexer().tokenize(str);
-    auto result = parser.parse(lexems.begin(), lexems.end());
-    ASSERT(*(result.ast) == IntegerAST(45));
+BinaryParser_Test::~BinaryParser_Test() {
+    for (const pair<string, BaseAST*>& test: data)
+        delete test.second;
 }
 
-void BinaryParser_Test::testParseBinary() {
-    string str = "34 + 34";
-    Lexems lexems = Lexer().tokenize(str);
-    auto result = parser.parse(lexems.begin(), lexems.end());
-    ASSERT(*(result.ast) == BinaryInstrAST(
-        "+", new IntegerAST(34), new IntegerAST(34), block
-    ));
 
-    str = "45 + 34 * 23";
-    lexems = Lexer().tokenize(str);
-    result = parser.parse(lexems.begin(), lexems.end());
-    ASSERT(*(result.ast) == BinaryInstrAST("+", new BinaryInstrAST("*",
-            new IntegerAST(34), new IntegerAST(23), block
-        ), new IntegerAST(45), block
-    ));
-
-    str = "a + b / c";
-    lexems = Lexer().tokenize(str);
-    result = parser.parse(lexems.begin(), lexems.end());
-    ASSERT(*(result.ast) == BinaryInstrAST("+", new BinaryInstrAST(
-            "/", new NameAST("b", block), new NameAST("c", block), block
-        ), new NameAST("a", block), block
-    ));
-
-    str = "45 + 2 * 90 - name";
-    lexems = Lexer().tokenize(str);
-    result = parser.parse(lexems.begin(), lexems.end());
-    cout << result << endl;
+void BinaryParser_Test::test() {
+    for (const pair<string, BaseAST*>& test_data: data) {
+        auto lexems = lexer.tokenize(test_data.first);
+        ParseResult actual = parser.parse(lexems.begin(), lexems.end());
+        if (*(actual.ast) == *(test_data.second)) {
+            ASSERT(true);
+        } else {
+            ASSERT(false);
+            cout << actual.ast << endl;
+        }
+        delete actual.ast;
+    }
 }
-
-void BinaryParser_Test::testParseSimpleParen() {}
 
 TestSuite* BinaryParser_Test::suite() {
-    using Pair = Pair<BinaryParser_Test>;
     auto* suite = new TestSuite;
-    vector<Pair> cases = {
-        Pair("testParseSingleOperand", &BinaryParser_Test::testParseSingleOperand),
-        Pair("testParseBinary", &BinaryParser_Test::testParseBinary),
-        Pair("testParseSimpleParen", &BinaryParser_Test::testParseSimpleParen)
-    };
-    for (const Pair& _case: cases) {
-        suite->addTest(new TestCaller<BinaryParser_Test>(
-            _case.first, _case.second
-        ));
+    suite->addTest(new TestCaller<BinaryParser_Test>(
+        "test", &BinaryParser_Test::test)
+    );
+    return suite;
+}
+
+
+CallInstrParser_Test::CallInstrParser_Test() : TestCase()
+    , block(llvm::BasicBlock::Create(context, "TestBlock"))
+    , parser(CallInstrParser(block)) {}
+
+CallInstrParser_Test::~CallInstrParser_Test() {
+    for (const Pair& data: test_data) {
+        delete data.second;
     }
+}
+
+void CallInstrParser_Test::test() {
+    for (const Pair& data: test_data) {
+        Lexems lexems = lexer.tokenize(data.first);
+        ParseResult actual = parser.parse(lexems.begin(), lexems.end());
+        if (*(actual.ast) == *(data.second)) {
+            ASSERT(true);
+        } else {
+            cout << actual.ast << endl;
+            cout << data.second << endl;
+            ParseResult debug = parser.parse(lexems.begin(), lexems.end());
+            delete debug.ast;
+            ASSERT(false);
+        }
+        delete actual.ast;
+    }
+}
+
+TestSuite* CallInstrParser_Test::suite() {
+    auto* suite = new TestSuite;
+    suite->addTest(new TestCaller<CallInstrParser_Test>(
+        "test", &CallInstrParser_Test::test
+    ));
+    return suite;
+}
+
+
+
+AssignInstrParser_Test::AssignInstrParser_Test() : TestCase()
+    , block(llvm::BasicBlock::Create(context, "testBlock"))
+    , parser(AssignInstrParser(block)) {}
+AssignInstrParser_Test::~AssignInstrParser_Test() {}
+
+
+void AssignInstrParser_Test::test() {
+    for (const Pair& data: testData) {
+        Lexems lexems = lexer.tokenize(data.first);
+        CLIter begin = lexems.begin();
+        CLIter end = lexems.end();
+        ParseResult actual = parser.parse(begin, end);
+        if (*(actual.ast) == *(data.second)) {
+            ASSERT(true);
+        } else {
+            auto debug = parser.parse(begin, end);
+            cout << debug.ast << endl;
+            cout << data.second << endl;
+            delete debug.ast;
+            ASSERT(false);
+        }
+        delete actual.ast;
+    }
+}
+
+TestSuite* AssignInstrParser_Test::suite() {
+    auto* suite = new TestSuite;
+    suite->addTest(new TestCaller<AssignInstrParser_Test>(
+        "test", &AssignInstrParser_Test::test
+    ));
     return suite;
 }
